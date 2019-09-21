@@ -1,0 +1,31 @@
+
+Creating App Engine application in project [qwiklabs-gcp-23b961bca8cc07a1] and region [asia-east2]....done.
+Success! The app is now created. Please use `gcloud app deploy` to deploy your first app.
+Services to deploy:
+
+descriptor:      [/home/google5263377_student/AdvancedMLwithTFonGCP/courses/machine_learning/deepdive/06_structured/labs/serving/application/app.yaml]
+source:          [/home/google5263377_student/AdvancedMLwithTFonGCP/courses/machine_learning/deepdive/06_structured/labs/serving/application]
+target project:  [qwiklabs-gcp-23b961bca8cc07a1]
+target service:  [default]
+target version:  [20190921t185129]
+target url:      [https://qwiklabs-gcp-23b961bca8cc07a1.appspot.com]
+
+
+Do you want to continue (Y/n)?  Y
+
+Beginning deployment of service [default]...
+╔════════════════════════════════════════════════════════════╗
+╠═ Uploading 394 files to Google Cloud Storage              ═╣
+╚════════════════════════════════════════════════════════════╝
+File upload done.
+Updating service [default]...done.
+Setting traffic split for service [default]...done.
+Deployed service [default] to [https://qwiklabs-gcp-23b961bca8cc07a1.appspot.com]
+
+You can stream logs from the command line by running:
+  $ gcloud app logs tail -s default
+
+To view your application in the web browser run:
+  $ gcloud app browse
+Your active configuration is: [cloudshell-17057]
+Visit https://PROJECT-ID.appspot.com/  e.g. https://qwiklabs-gcp-23b961bca8cc07a1.appspot.com
