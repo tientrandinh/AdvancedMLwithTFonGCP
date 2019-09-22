@@ -97,13 +97,18 @@ def read_and_preprocess_with_augment(image_bytes, label = None):
     return read_and_preprocess(image_bytes, label, augment = True)
     
 def read_and_preprocess(image_bytes, label = None, augment = False):
-    # Decode the image, end up with pixel values that are in the -1, 1 range    
-    image = #TODO: decode contents into JPEG
-    image = #TODO: convert JPEG tensor to floats between 0 and 1
+    # Decode the image, end up with pixel values that are in the -1, 1 range
+    image = tf.image.decode_jpeg(contents = image_bytes, channels = NUM_CHANNELS)
+    image = tf.image.convert_image_dtype(image = image, dtype = tf.float32) # 0-1
     image = tf.expand_dims(input = image, axis = 0) # resize_bilinear needs batches
     
     if augment:
-        #TODO: Add image augmentation functions
+        image = tf.image.resize_bilinear(images = image, size = [HEIGHT + 10, WIDTH + 10], align_corners = False)
+        image = tf.squeeze(input = image, axis = 0) # remove batch dimension
+        image = tf.random_crop(value = image, size = [HEIGHT, WIDTH, NUM_CHANNELS])
+        image = tf.image.random_flip_left_right(image = image)
+        image = tf.image.random_brightness(image = image, max_delta = 63.0 / 255.0)
+        image = tf.image.random_contrast(image = image, lower = 0.2, upper = 1.8)
     else:
         image = tf.image.resize_bilinear(images = image, size = [HEIGHT, WIDTH], align_corners = False)
         image = tf.squeeze(input = image, axis = 0) # remove batch dimension
@@ -120,20 +125,20 @@ def serving_input_fn():
     image["image"] = tf.expand_dims(image["image"], axis = 0)
     return tf.estimator.export.ServingInputReceiver(features = image, receiver_tensors = feature_placeholders)
 
-def make_input_fn(csv_of_filenames, batch_size, mode, augment=False):
-    def _input_fn(): 
+def make_input_fn(csv_of_filenames, batch_size, mode, augment = False):
+    def _input_fn():
         def decode_csv(csv_row):
             filename, label = tf.decode_csv(records = csv_row, record_defaults = [[""],[""]])
             image_bytes = tf.read_file(filename = filename)
             return image_bytes, label
         
         # Create tf.data.dataset from filename
-        dataset = tf.data.TextLineDataset(filenames = csv_of_filenames).map(map_func = decode_csv)
+        dataset = tf.data.TextLineDataset(filenames = csv_of_filenames).map(map_func = decode_csv)     
         
-        if augment:
-            dataset = #TODO: map read_and_preprocess_with_augment
+        if augment: 
+            dataset = dataset.map(map_func = read_and_preprocess_with_augment)
         else:
-            dataset = #TODO: map read_and_preprocess
+            dataset = dataset.map(map_func = read_and_preprocess)
 
         if mode == tf.estimator.ModeKeys.TRAIN:
             num_epochs = None # indefinitely
@@ -210,13 +215,13 @@ def train_and_evaluate(output_dir, hparams):
             save_checkpoints_secs = EVAL_INTERVAL),
             model_dir = output_dir)
     
-    # Set estimator"s train_spec to use train_input_fn and train for so many steps
+    # Set estimator's train_spec to use train_input_fn and train for so many steps
     train_spec = tf.estimator.TrainSpec(
         input_fn = make_input_fn(
-            hparams["train_data_path"],
-            hparams["batch_size"],
+            hparams['train_data_path'],
+            hparams['batch_size'],
             mode = tf.estimator.ModeKeys.TRAIN,
-            augment = hparams["augment"]),
+            augment = hparams['augment']),
         max_steps = hparams["train_steps"])
 
     # Create exporter that uses serving_input_fn to create saved_model for serving
@@ -224,11 +229,11 @@ def train_and_evaluate(output_dir, hparams):
         name = "exporter", 
         serving_input_receiver_fn = serving_input_fn)
 
-    # Set estimator"s eval_spec to use eval_input_fn and export saved_model
+    # Set estimator's eval_spec to use eval_input_fn and export saved_model
     eval_spec = tf.estimator.EvalSpec(
         input_fn = make_input_fn(
-            hparams["eval_data_path"],
-            hparams["batch_size"],
+            hparams['eval_data_path'],
+            hparams['batch_size'],
             mode = tf.estimator.ModeKeys.EVAL),
         steps = None,
         exporters = exporter,
