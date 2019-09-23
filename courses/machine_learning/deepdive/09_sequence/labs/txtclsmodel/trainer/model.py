@@ -86,12 +86,12 @@ Create tf.estimator compatible input function
 """
 def input_fn(texts, labels, tokenizer, batch_size, mode):
     # Transform text to sequence of integers
-    x = # TODO (hint: use tokenizer)
+    x = tokenizer.texts_to_sequences(texts)
 
     # Fix sequence length to max value. Sequences shorter than the length are
     # padded in the beginning and sequences longer are truncated
     # at the beginning.
-    x = # TODO (hint: there is a useful function in tf.keras.preprocessing...)
+    x = sequence.pad_sequences(x, maxlen=MAX_SEQUENCE_LENGTH)
 
     # default settings for training
     num_epochs = None
@@ -103,13 +103,14 @@ def input_fn(texts, labels, tokenizer, batch_size, mode):
         shuffle = False
 
     return tf.estimator.inputs.numpy_input_fn(
-        x, 
+        x,
         y=labels,
         batch_size=batch_size,
         num_epochs=num_epochs,
         shuffle=shuffle,
         queue_capacity=50000
     )
+
 
 """
 Builds a CNN model using keras and converts to tf.estimator.Estimator
@@ -179,7 +180,7 @@ def keras_estimator(model_dir,
     # Compile model with learning parameters.
     optimizer = tf.keras.optimizers.Adam(lr=learning_rate)
     model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['acc'])
-    estimator = # TODO: convert keras model to tf.estimator.Estimator
+    estimator = tf.keras.estimator.model_to_estimator(keras_model=model, model_dir=model_dir, config=config)
 
     return estimator
 
@@ -194,6 +195,7 @@ def serving_input_fn():
     feature_placeholder = tf.placeholder(tf.int16, [None, MAX_SEQUENCE_LENGTH])
     features = feature_placeholder  # pass as-is
     return tf.estimator.export.TensorServingInputReceiver(features, feature_placeholder)
+
 
 """
 Takes embedding for generic voabulary and extracts the embeddings
@@ -259,7 +261,13 @@ def train_and_evaluate(output_dir, hparams):
 
     # Create estimator
     run_config = tf.estimator.RunConfig(save_checkpoints_steps=500)
-    estimator = # TODO: create estimator
+    estimator = keras_estimator(
+        model_dir=output_dir,
+        config=run_config,
+        learning_rate=hparams['learning_rate'],
+        embedding_path=hparams['embedding_path'],
+        word_index=tokenizer.word_index
+    )
 
     # Create TrainSpec
     train_steps = hparams['num_epochs'] * len(train_texts) / hparams['batch_size']
